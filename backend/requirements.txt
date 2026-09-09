@@ -1,0 +1,19 @@
+fastapi==0.141.1
+uvicorn[standard]==0.46.0
+sqlalchemy==2.0.52
+pydantic==2.13.3
+pydantic-settings==2.14.0
+python-dotenv==1.2.2
+psycopg2-binary==2.9.12
+pandas>=2.2,<3.1
+numpy>=2.1,<2.5
+scikit-learn>=1.6,<1.9
+joblib>=1.4,<1.6
+httpx==0.28.1
+pytest==9.1.1
+pytest-cov==7.1.0
+
+# NOTE: the trained model artifact (ml/models/freight_model.joblib) is a
+# pickled scikit-learn object. If you retrain with a materially different
+# scikit-learn major version, re-run `python ml/training/train.py` again
+# after installing this file so the artifact matches your environment.

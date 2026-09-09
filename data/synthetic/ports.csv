@@ -1,0 +1,8 @@
+code,name,state,lat,lon,port_type,draft_limit_m,loa_limit_m,beam_limit_m,congestion,risk,compatible_classes,notes
+INPAR,Paradip,Odisha,20.2648,86.6947,Bulk / Deep Water,18.1,300.0,50.0,MEDIUM,MEDIUM,"[""Handysize"", ""Supramax"", ""Panamax"", ""Capesize""]",Major deep-water bulk terminal on Odisha coast; capesize-capable outer channel.
+INVTZ,Visakhapatnam,Andhra Pradesh,17.6868,83.2185,Bulk / Multi-purpose,17.0,280.0,45.0,MEDIUM,MEDIUM,"[""Handysize"", ""Supramax"", ""Panamax""]",Natural harbour; inner-harbour draft materially shallower than outer anchorage.
+INGAN,Gangavaram,Andhra Pradesh,17.6167,83.2833,Bulk / Deep Water (Private),18.5,310.0,50.0,LOW,LOW,"[""Handysize"", ""Supramax"", ""Panamax"", ""Capesize""]",Private deep-water port purpose-built for capesize dry-bulk.
+INGOP,Gopalpur,Odisha,19.2648,84.92,Bulk (Shallow Draft),14.5,230.0,32.0,LOW,MEDIUM,"[""Handysize"", ""Supramax""]",Shallow-draft merchant port; capesize/panamax not compatible.
+INDHM,Dhamra,Odisha,20.7833,86.9833,Bulk / Deep Water (Private),18.0,300.0,50.0,LOW,LOW,"[""Handysize"", ""Supramax"", ""Panamax"", ""Capesize""]",Deep-water private port; among the few Indian east-coast berths taking capesize.
+INSAG,Sagar-Sandheads,West Bengal,21.65,88.05,Anchorage / Transshipment,12.5,225.0,32.2,HIGH,HIGH,"[""Handysize"", ""Supramax""]","Outer anchorage serving Kolkata dock system; larger parcels lightered here, drives congestion."
+INHAL,Haldia,West Bengal,22.0333,88.0833,Bulk / River Port,9.0,186.0,28.0,HIGH,HIGH,"[""Handysize""]","Tidal river port on the Hooghly; hard draft ceiling, handysize only."
