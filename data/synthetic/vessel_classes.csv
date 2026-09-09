@@ -1,5 +1,0 @@
-code,name,dwt_tonnes,draft_m,loa_m,beam_m,cargo_capacity_tonnes,typical_daily_hire_usd
-HANDY,Handysize,35000,10.5,190.0,32.0,34000,9500
-SUPRA,Supramax,58000,12.6,190.0,32.3,56000,12800
-PANMX,Panamax,82000,14.5,225.0,32.2,79000,15600
-CAPE,Capesize,180000,18.0,300.0,45.0,175000,22500
