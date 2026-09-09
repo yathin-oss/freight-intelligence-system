@@ -1,0 +1,43 @@
+route_id,origin_code,origin_country,origin_name,destination_code,destination_name,cargo_type,distance_nm,reference_freight_usd_per_tonne,indicative_annual_volume_tonnes,trend,trend_pct_8wk,congestion,risk,route_status,data_status
+R001,AUNTL,Australia,Newcastle,INPAR,Paradip,Coal,4908.6,13.21,8486105,decreasing,-5.37,MEDIUM,MEDIUM,active,SYNTHETIC
+R002,AUNTL,Australia,Newcastle,INVTZ,Visakhapatnam,Coal,4965.2,13.213,5767691,decreasing,-5.37,MEDIUM,MEDIUM,active,SYNTHETIC
+R003,AUNTL,Australia,Newcastle,INGAN,Gangavaram,Coal,4959.7,13.021,7873756,decreasing,-5.37,LOW,LOW,active,SYNTHETIC
+R004,AUNTL,Australia,Newcastle,INGOP,Gopalpur,Coal,4948.2,13.021,3156822,decreasing,-5.37,LOW,MEDIUM,active,SYNTHETIC
+R005,AUNTL,Australia,Newcastle,INDHM,Dhamra,Coal,4916.1,13.019,7943587,decreasing,-5.37,LOW,LOW,active,SYNTHETIC
+R006,AUNTL,Australia,Newcastle,INSAG,Sagar-Sandheads,Coal,4904.0,13.529,2654395,decreasing,-5.37,HIGH,HIGH,active,SYNTHETIC
+R007,AUNTL,Australia,Newcastle,INHAL,Haldia,Coal,4917.6,13.53,2117644,decreasing,-5.37,HIGH,HIGH,active,SYNTHETIC
+R008,AUNTL,Australia,Newcastle,INPAR,Paradip,Iron Ore,4908.6,13.202,4913008,decreasing,-10.33,MEDIUM,MEDIUM,active,SYNTHETIC
+R009,AUNTL,Australia,Newcastle,INVTZ,Visakhapatnam,Iron Ore,4965.2,13.205,3339190,decreasing,-10.33,MEDIUM,MEDIUM,active,SYNTHETIC
+R010,AUNTL,Australia,Newcastle,INGAN,Gangavaram,Iron Ore,4959.7,13.013,4558490,decreasing,-10.33,LOW,LOW,active,SYNTHETIC
+R011,AUNTL,Australia,Newcastle,INGOP,Gopalpur,Iron Ore,4948.2,13.013,1827634,decreasing,-10.33,LOW,MEDIUM,active,SYNTHETIC
+R012,AUNTL,Australia,Newcastle,INDHM,Dhamra,Iron Ore,4916.1,13.011,4598919,decreasing,-10.33,LOW,LOW,active,SYNTHETIC
+R013,AUNTL,Australia,Newcastle,INSAG,Sagar-Sandheads,Iron Ore,4904.0,13.521,1536755,decreasing,-10.33,HIGH,HIGH,active,SYNTHETIC
+R014,AUNTL,Australia,Newcastle,INHAL,Haldia,Iron Ore,4917.6,13.521,1226004,decreasing,-10.33,HIGH,HIGH,active,SYNTHETIC
+R015,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INPAR,Paradip,Coal,2181.5,6.671,6783153,increasing,6.26,MEDIUM,MEDIUM,active,SYNTHETIC
+R016,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INVTZ,Visakhapatnam,Coal,2282.9,6.673,4456282,increasing,6.26,MEDIUM,MEDIUM,active,SYNTHETIC
+R017,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INGAN,Gangavaram,Coal,2277.8,6.575,6090353,increasing,6.26,LOW,LOW,active,SYNTHETIC
+R018,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INGOP,Gopalpur,Coal,2238.8,6.574,2478579,increasing,6.26,LOW,MEDIUM,active,SYNTHETIC
+R019,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INDHM,Dhamra,Coal,2184.1,6.573,6351635,increasing,6.26,LOW,LOW,active,SYNTHETIC
+R020,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INSAG,Sagar-Sandheads,Coal,2162.5,6.833,2138359,increasing,6.26,HIGH,HIGH,active,SYNTHETIC
+R021,IDSMR,Indonesia,Samarinda / Taboneo Anchorage,INHAL,Haldia,Coal,2174.0,6.833,1701638,increasing,6.26,HIGH,HIGH,active,SYNTHETIC
+R022,MZNAC,Mozambique,Nacala,INPAR,Paradip,Coal,3427.0,15.649,1950469,decreasing,-1.65,MEDIUM,MEDIUM,active,SYNTHETIC
+R023,MZNAC,Mozambique,Nacala,INVTZ,Visakhapatnam,Coal,3176.7,15.633,1446604,decreasing,-1.65,MEDIUM,MEDIUM,active,SYNTHETIC
+R024,MZNAC,Mozambique,Nacala,INGAN,Gangavaram,Coal,3177.4,15.405,1972208,decreasing,-1.65,LOW,LOW,active,SYNTHETIC
+R025,MZNAC,Mozambique,Nacala,INGOP,Gopalpur,Coal,3310.3,15.413,757211,decreasing,-1.65,LOW,MEDIUM,active,SYNTHETIC
+R026,MZNAC,Mozambique,Nacala,INDHM,Dhamra,Coal,3457.9,15.422,1812225,decreasing,-1.65,LOW,LOW,active,SYNTHETIC
+R027,MZNAC,Mozambique,Nacala,INSAG,Sagar-Sandheads,Coal,3536.4,16.036,590666,decreasing,-1.65,HIGH,HIGH,active,SYNTHETIC
+R028,MZNAC,Mozambique,Nacala,INHAL,Haldia,Coal,3550.8,16.037,470616,decreasing,-1.65,HIGH,HIGH,active,SYNTHETIC
+R029,RUVVO,Russia,Vostochny,INPAR,Paradip,Coal,2686.4,26.111,3193718,increasing,2.51,MEDIUM,MEDIUM,active,SYNTHETIC
+R030,RUVVO,Russia,Vostochny,INVTZ,Visakhapatnam,Coal,2936.8,26.137,2008471,increasing,2.51,MEDIUM,MEDIUM,active,SYNTHETIC
+R031,RUVVO,Russia,Vostochny,INGAN,Gangavaram,Coal,2936.9,25.755,2738731,increasing,2.51,LOW,LOW,active,SYNTHETIC
+R032,RUVVO,Russia,Vostochny,INGOP,Gopalpur,Coal,2801.5,25.741,1148439,increasing,2.51,LOW,MEDIUM,active,SYNTHETIC
+R033,RUVVO,Russia,Vostochny,INDHM,Dhamra,Coal,2653.8,25.726,3030891,increasing,2.51,LOW,LOW,active,SYNTHETIC
+R034,RUVVO,Russia,Vostochny,INSAG,Sagar-Sandheads,Coal,2574.6,26.736,1041376,increasing,2.51,HIGH,HIGH,active,SYNTHETIC
+R035,RUVVO,Russia,Vostochny,INHAL,Haldia,Coal,2558.4,26.735,838376,increasing,2.51,HIGH,HIGH,active,SYNTHETIC
+R036,USNFK,United States,Norfolk,INPAR,Paradip,Coal,7245.0,37.82,2451425,increasing,8.06,MEDIUM,MEDIUM,active,SYNTHETIC
+R037,USNFK,United States,Norfolk,INVTZ,Visakhapatnam,Coal,7333.0,37.833,1665129,increasing,8.06,MEDIUM,MEDIUM,active,SYNTHETIC
+R038,USNFK,United States,Norfolk,INGAN,Gangavaram,Coal,7338.2,37.29,2269022,increasing,8.06,LOW,LOW,active,SYNTHETIC
+R039,USNFK,United States,Norfolk,INGOP,Gopalpur,Coal,7273.8,37.281,915644,increasing,8.06,LOW,MEDIUM,active,SYNTHETIC
+R040,USNFK,United States,Norfolk,INDHM,Dhamra,Coal,7219.4,37.273,2306360,increasing,8.06,LOW,LOW,active,SYNTHETIC
+R041,USNFK,United States,Norfolk,INSAG,Sagar-Sandheads,Coal,7184.5,38.717,772521,increasing,8.06,HIGH,HIGH,active,SYNTHETIC
+R042,USNFK,United States,Norfolk,INHAL,Haldia,Coal,7162.7,38.714,619898,increasing,8.06,HIGH,HIGH,active,SYNTHETIC

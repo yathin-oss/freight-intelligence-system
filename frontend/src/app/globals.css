@@ -1,0 +1,138 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens, as RGB triplets (so both Tailwind's `rgb(var(--x) /
+ * <alpha-value>)` pattern AND plain CSS / inline React styles / Recharts
+ * SVG props can all consume the same variables with `rgb(var(--x))` or
+ * `rgb(var(--x) / 0.NN)`).
+ *
+ * :root holds the LIGHT theme (the default - opens light unless the viewer
+ * chose dark last time, see ThemeInit in layout.tsx). `.dark` on <html>
+ * overrides every token for the dark theme. Component code never branches
+ * on theme - it always uses the same semantic class names/vars, and the
+ * two blocks below are the only place "light" and "dark" are spelled out.
+ *
+ * Palette: a warm amber/gold brand accent (a trading-desk terminal, not a
+ * cyan SaaS dashboard) with amber kept distinct from the semantic
+ * warning/medium-risk orange so "brand" and "caution" never read as the
+ * same color. Base/text scale is warm-neutral in light mode to match.
+ */
+:root {
+  color-scheme: light;
+
+  /* base/surface/text scale - light */
+  --c-base-950: 250 248 245; /* canvas (page background) */
+  --c-base-900: 255 255 255; /* panel/card surface */
+  --c-base-850: 253 252 250; /* header / sticky bars */
+  --c-base-800: 241 237 230; /* secondary surface, subtle hover */
+  --c-base-750: 231 225 214; /* tertiary surface */
+  --c-base-700: 214 206 190; /* border, stronger */
+  --c-base-600: 168 158 140; /* border / scrollbar thumb */
+  --c-base-500: 87 83 74; /* secondary / muted text */
+  --c-base-100: 28 25 21; /* primary text ("ink") + hairline borders at low alpha */
+
+  /* brand + semantic accents - light (darker/more saturated for contrast on white) */
+  --c-gold: 180 83 9; /* brand accent (was cyan) */
+  --c-info: 29 78 216; /* secondary / informational blue */
+  --c-warn: 154 52 18; /* caution / medium-risk - distinct from --c-gold */
+  --c-danger: 190 18 60; /* negative / high-risk */
+  --c-good: 21 128 61; /* positive / low-risk */
+  --c-violet: 109 40 217; /* 5th chart hue (cost breakdown only) */
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* base/surface/text scale - dark (unchanged from the original design) */
+  --c-base-950: 5 7 10;
+  --c-base-900: 10 14 20;
+  --c-base-850: 13 18 26;
+  --c-base-800: 17 24 38;
+  --c-base-750: 21 29 44;
+  --c-base-700: 27 36 54;
+  --c-base-600: 38 49 74;
+  --c-base-500: 122 138 168;
+  --c-base-100: 230 235 242;
+
+  /* brand + semantic accents - dark (brighter, pop on near-black) */
+  --c-gold: 245 179 66;
+  --c-info: 96 165 250;
+  --c-warn: 251 146 60;
+  --c-danger: 251 113 133;
+  --c-good: 74 222 128;
+  --c-violet: 167 139 250;
+}
+
+html,
+body {
+  background-color: rgb(var(--c-base-950));
+  color: rgb(var(--c-base-100));
+}
+
+* {
+  border-color: rgb(var(--c-base-100) / 0.06);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgb(var(--c-base-900));
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-base-600));
+  border-radius: 6px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-base-500));
+}
+
+/*
+ * The map canvas + its MapLibre-native popups are a deliberately
+ * theme-independent "instrument panel": the bundled basemap, route/port
+ * marker colors and these popups always render dark, regardless of the
+ * site theme, the same way a chart or satellite layer commonly stays dark
+ * in an otherwise light app. Only these two rules stay hardcoded.
+ */
+.maplibregl-popup-content {
+  background: #0d121a !important;
+  color: #e6ebf2 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  padding: 0 !important;
+}
+.maplibregl-popup-tip {
+  border-top-color: #0d121a !important;
+  border-bottom-color: #0d121a !important;
+}
+.maplibregl-ctrl-attrib {
+  background: rgba(5, 7, 10, 0.65) !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: #7a8aa8 !important;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.9);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.2, 0.6, 0.4, 1) infinite;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}

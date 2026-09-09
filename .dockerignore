@@ -1,0 +1,14 @@
+**/node_modules
+**/.next
+frontend/node_modules
+frontend/.next
+backend/__pycache__
+backend/**/__pycache__
+backend/.pytest_cache
+backend/freight.db
+backend/test_freight.db
+**/*.pyc
+.git
+.env
+**/.env
+*.log
