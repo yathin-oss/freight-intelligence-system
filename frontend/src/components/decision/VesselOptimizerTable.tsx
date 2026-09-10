@@ -1,8 +1,57 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import clsx from "clsx";
-import { Check, X } from "lucide-react";
+import { Check, TrendingDown, TrendingUp, X } from "lucide-react";
+import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { Panel } from "@/components/ui/Panel";
 import { DataStatusBadge } from "@/components/ui/Badge";
+import { vesselClassRateHistory } from "@/lib/api";
 import type { FeasibilityResponse } from "@/types/api";
+
+// Per-vessel-class historic daily-hire trend ("loads") - see
+// implementation_plan.txt Section 1b. A compact sparkline next to each
+// vessel class's estimated daily hire, independent of the origin/cargo BDI
+// forecast above.
+function LoadsSparkline({ vesselCode }: { vesselCode: string }) {
+  const [history, setHistory] = useState<{ date: string; daily_hire_usd: number }[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    vesselClassRateHistory(vesselCode, 8)
+      .then((rows) => {
+        if (!cancelled) setHistory(rows);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [vesselCode]);
+
+  if (history.length < 2) return null;
+
+  const first = history[0].daily_hire_usd;
+  const last = history[history.length - 1].daily_hire_usd;
+  const pct = ((last - first) / first) * 100;
+  const up = pct >= 0;
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <div className="h-6 w-16">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={history}>
+            <Line type="monotone" dataKey="daily_hire_usd" stroke={up ? "#e8607a" : "#3dd68c"} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <span className={clsx("flex items-center gap-0.5 text-[10.5px] font-medium", up ? "text-accent-rose" : "text-risk-low")}>
+        {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+        {up ? "+" : ""}
+        {pct.toFixed(1)}%
+      </span>
+    </div>
+  );
+}
 
 export function VesselOptimizerTable({ feasibility }: { feasibility: FeasibilityResponse }) {
   return (
@@ -65,8 +114,11 @@ export function VesselOptimizerTable({ feasibility }: { feasibility: Feasibility
                 </div>
               )}
 
-              <div className="mt-2 text-[11px] text-base-500">
-                Estimated daily hire: <span className="text-base-100">${r.estimated_daily_hire_usd.toLocaleString()}</span>
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-base-500">
+                <span>
+                  Estimated daily hire: <span className="text-base-100">${r.estimated_daily_hire_usd.toLocaleString()}</span>
+                </span>
+                <LoadsSparkline vesselCode={r.vessel_code} />
               </div>
             </div>
           );

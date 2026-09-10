@@ -5,6 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, History } from "lucide-react";
 import { useWorkspaceStore } from "@/lib/store";
 import { api } from "@/lib/api";
+import { useDisruptionStore } from "@/lib/disruptionStore";
+import { applyDisruptionToDecision, getDisruptionForRoute } from "@/lib/disruption";
+import { routeId } from "@/lib/simulation";
 import type { DecisionRunSummary, Route } from "@/types/api";
 import { SectionNav } from "./SectionNav";
 import { ShipmentScenarioForm } from "./ShipmentScenarioForm";
@@ -45,6 +48,16 @@ export function DecisionWorkspaceClient() {
     api.listDecisionRuns(8).then(setRecentRuns).catch(() => {});
   }, [result]);
 
+  const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
+  useEffect(() => {
+    initDisruptions();
+  }, [initDisruptions]);
+
+  const activeDisruption = result
+    ? getDisruptionForRoute(routeId(result.shipment.origin_code, result.shipment.destination_code, result.shipment.cargo_type), disruptionEvents)
+    : undefined;
+  const effectiveResult = result && activeDisruption ? applyDisruptionToDecision(result, activeDisruption) : result;
+
   if (!initDone) return null;
 
   return (
@@ -84,16 +97,33 @@ export function DecisionWorkspaceClient() {
           </div>
         )}
 
-        {result && (
+        {effectiveResult && (
           <>
-            <ForecastPanel forecast={result.forecast} originCode={result.shipment.origin_code} cargoType={result.shipment.cargo_type} />
-            <CharterTimingCard recommendation={result.recommendation} />
-            <VesselOptimizerTable feasibility={result.feasibility} />
-            <RiskPanel risk={result.risk} />
-            <ScenarioSimulator scenarios={result.what_if} />
+            {activeDisruption && (
+              <div className="flex items-start gap-2 rounded-lg border border-accent-rose/30 bg-accent-rose/10 px-4 py-3 text-sm text-accent-rose">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <div className="font-medium">Active Disruption: {activeDisruption.label}</div>
+                  <div className="mt-0.5 text-xs text-accent-rose/80">
+                    Simulated +{activeDisruption.bdi_impact_pct}% BDI impact, {activeDisruption.delay_days}-day delay
+                    {activeDisruption.reroute ? ", rerouted" : ""}. Forecast, risk and cost below are adjusted for it — manage
+                    disruptions from the Disruption Simulator on the{" "}
+                    <a href="/network" className="underline hover:text-accent-rose">
+                      Global Network map
+                    </a>
+                    . (Scenario Simulator cards below still reflect baseline, undisrupted rates.)
+                  </div>
+                </div>
+              </div>
+            )}
+            <ForecastPanel forecast={effectiveResult.forecast} originCode={effectiveResult.shipment.origin_code} cargoType={effectiveResult.shipment.cargo_type} />
+            <CharterTimingCard recommendation={effectiveResult.recommendation} />
+            <VesselOptimizerTable feasibility={effectiveResult.feasibility} />
+            <RiskPanel risk={effectiveResult.risk} />
+            <ScenarioSimulator scenarios={effectiveResult.what_if} />
             <div className="grid gap-4 lg:grid-cols-2">
-              <CostBreakdownPanel cost={result.cost} />
-              <ExplainabilityPanel recommendation={result.recommendation} />
+              <CostBreakdownPanel cost={effectiveResult.cost} />
+              <ExplainabilityPanel recommendation={effectiveResult.recommendation} />
             </div>
           </>
         )}

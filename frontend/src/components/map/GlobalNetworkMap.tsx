@@ -9,12 +9,37 @@ import { api } from "@/lib/api";
 import { LOCAL_FALLBACK_STYLE, resolveInitialMapStyle } from "@/lib/mapStyle";
 import { buildArc } from "@/lib/geo";
 import { useWorkspaceStore } from "@/lib/store";
+import { useDisruptionStore } from "@/lib/disruptionStore";
 import { portPopupHtml, routePopupHtml } from "./popups";
 import type { Origin, Port, Route } from "@/types/api";
+import type { DisruptionEvent, DisruptionType } from "@/types/disruption";
 import { MapFilters, type FilterState, DEFAULT_FILTERS } from "./MapFilters";
+import { DisruptionPanel } from "./DisruptionPanel";
 
 const RISK_COLOR = { LOW: "#3dd68c", MEDIUM: "#e8a33d", HIGH: "#e8607a" } as const;
 const TREND_COLOR = { increasing: "#e8607a", decreasing: "#3dd68c", stable: "#7a8aa8" } as const;
+const DISRUPTION_COLOR: Record<DisruptionType, string> = { weather: "#4c8dff", geopolitical: "#e8607a", congestion: "#e8a33d" };
+
+// A more pronounced, opposite-curving arc used to visualize a rerouted
+// disrupted lane distinctly from its normal (blocked) path.
+function buildRerouteArc(from: [number, number], to: [number, number], segments = 64): [number, number][] {
+  let [lng1, lat1] = from;
+  let [lng2, lat2] = to;
+  let dLng = lng2 - lng1;
+  if (dLng > 180) lng2 -= 360;
+  else if (dLng < -180) lng2 += 360;
+  const dist = Math.hypot(lng2 - lng1, lat2 - lat1);
+  const bulge = Math.min(dist * 0.28, 30);
+  const points: [number, number][] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const lng = lng1 + (lng2 - lng1) * t;
+    const latLinear = lat1 + (lat2 - lat1) * t;
+    const lat = latLinear - Math.sin(Math.PI * t) * bulge;
+    points.push([((lng + 540) % 360) - 180, lat]);
+  }
+  return points;
+}
 
 const VIEWS: Record<string, { center: [number, number]; zoom: number }> = {
   world: { center: [55, 10], zoom: 1.55 },
@@ -44,7 +69,7 @@ function originsGeoJSON(origins: Origin[]) {
   };
 }
 
-function routesGeoJSON(routes: Route[], origins: Origin[], ports: Port[]) {
+function routesGeoJSON(routes: Route[], origins: Origin[], ports: Port[], disruptionByRoute: Map<string, DisruptionEvent>) {
   const originByCode = new Map(origins.map((o) => [o.code, o]));
   const portByCode = new Map(ports.map((p) => [p.code, p]));
   const features = routes
@@ -53,6 +78,7 @@ function routesGeoJSON(routes: Route[], origins: Origin[], ports: Port[]) {
       const p = portByCode.get(r.destination_code);
       if (!o || !p) return null;
       const coords = buildArc([o.lon, o.lat], [p.lon, p.lat]);
+      const disruption = disruptionByRoute.get(r.route_id);
       return {
         type: "Feature" as const,
         geometry: { type: "LineString" as const, coordinates: coords },
@@ -68,7 +94,31 @@ function routesGeoJSON(routes: Route[], origins: Origin[], ports: Port[]) {
           risk_color: RISK_COLOR[r.risk],
           trend_color: TREND_COLOR[r.trend],
           congestion_color: RISK_COLOR[r.congestion],
+          disrupted: Boolean(disruption),
+          rerouted: Boolean(disruption?.reroute),
+          disruption_color: disruption ? DISRUPTION_COLOR[disruption.type] : "#000000",
         },
+      };
+    })
+    .filter(Boolean);
+  return { type: "FeatureCollection" as const, features: features as GeoJSON.Feature[] };
+}
+
+function rerouteGeoJSON(routes: Route[], origins: Origin[], ports: Port[], disruptionByRoute: Map<string, DisruptionEvent>) {
+  const originByCode = new Map(origins.map((o) => [o.code, o]));
+  const portByCode = new Map(ports.map((p) => [p.code, p]));
+  const features = routes
+    .map((r) => {
+      const disruption = disruptionByRoute.get(r.route_id);
+      if (!disruption?.reroute) return null;
+      const o = originByCode.get(r.origin_code);
+      const p = portByCode.get(r.destination_code);
+      if (!o || !p) return null;
+      const coords = buildRerouteArc([o.lon, o.lat], [p.lon, p.lat]);
+      return {
+        type: "Feature" as const,
+        geometry: { type: "LineString" as const, coordinates: coords },
+        properties: { route_id: r.route_id, disruption_color: DISRUPTION_COLOR[disruption.type] },
       };
     })
     .filter(Boolean);
@@ -80,6 +130,7 @@ export function GlobalNetworkMap() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const popupRef = useRef<maplibregl.Popup | null>(null);
+  const disruptionMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   const [ports, setPorts] = useState<Port[]>([]);
   const [origins, setOrigins] = useState<Origin[]>([]);
@@ -94,6 +145,8 @@ export function GlobalNetworkMap() {
   const [showLegend, setShowLegend] = useState(true);
 
   const setDraft = useWorkspaceStore((s) => s.setDraft);
+  const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
+  const disruptionByRoute = new Map(disruptionEvents.map((e) => [e.route_id, e]));
 
   // ---- data fetch ------------------------------------------------------
   useEffect(() => {
@@ -104,7 +157,21 @@ export function GlobalNetworkMap() {
         setRoutes(r);
       })
       .catch((err) => setLoadError(err.message || "Failed to load map data from the API."));
+    initDisruptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function showPopup(lngLat: maplibregl.LngLatLike, html: string) {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!popupRef.current) {
+      popupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "320px", offset: 14 });
+    }
+    popupRef.current.setLngLat(lngLat).setHTML(html).addTo(map);
+  }
+  function hidePopup() {
+    popupRef.current?.remove();
+  }
 
   // ---- map init ----------------------------------------------------------
   useEffect(() => {
@@ -154,7 +221,8 @@ export function GlobalNetworkMap() {
       else map.addSource(id, { type: "geojson", data: data as any });
     };
 
-    addOrUpdateSource("routes-src", routesGeoJSON(routes, origins, ports) as any);
+    addOrUpdateSource("routes-src", routesGeoJSON(routes, origins, ports, disruptionByRoute) as any);
+    addOrUpdateSource("routes-reroute-src", rerouteGeoJSON(routes, origins, ports, disruptionByRoute) as any);
     addOrUpdateSource("ports-src", portsGeoJSON(ports) as any);
     addOrUpdateSource("origins-src", originsGeoJSON(origins) as any);
 
@@ -166,7 +234,7 @@ export function GlobalNetworkMap() {
         paint: {
           "line-color": ["get", "trend_color"],
           "line-width": ["interpolate", ["linear"], ["get", "volume"], 0, 1, 40_000_000, 5],
-          "line-opacity": 0.75,
+          "line-opacity": ["case", ["==", ["get", "disrupted"], true], ["case", ["==", ["get", "rerouted"], true], 0.25, 0.45], 0.75],
         },
         layout: { "line-cap": "round", "line-join": "round" },
       });
@@ -175,6 +243,36 @@ export function GlobalNetworkMap() {
         type: "line",
         source: "routes-src",
         paint: { "line-color": "#000", "line-width": 14, "line-opacity": 0 },
+      });
+    }
+
+    if (!map.getLayer("routes-disrupted-overlay")) {
+      map.addLayer({
+        id: "routes-disrupted-overlay",
+        type: "line",
+        source: "routes-src",
+        filter: ["==", ["get", "disrupted"], true],
+        paint: {
+          "line-color": ["get", "disruption_color"],
+          "line-width": 3,
+          "line-dasharray": [1.5, 1.5],
+        },
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
+    }
+
+    if (!map.getLayer("routes-reroute-line")) {
+      map.addLayer({
+        id: "routes-reroute-line",
+        type: "line",
+        source: "routes-reroute-src",
+        paint: {
+          "line-color": ["get", "disruption_color"],
+          "line-width": 2.5,
+          "line-dasharray": [3, 2],
+          "line-opacity": 0.85,
+        },
+        layout: { "line-cap": "round", "line-join": "round" },
       });
     }
 
@@ -221,7 +319,7 @@ export function GlobalNetworkMap() {
         },
       });
     }
-  }, [ports, origins, routes]);
+  }, [ports, origins, routes, disruptionEvents]);
 
   useEffect(() => {
     if (mapReady) buildLayers();
@@ -283,16 +381,6 @@ export function GlobalNetworkMap() {
     const portByCode = new Map(ports.map((p) => [p.code, p]));
     const routeByCode = new Map(routes.map((r) => [r.route_id, r]));
 
-    function showPopup(lngLat: maplibregl.LngLatLike, html: string) {
-      if (!popupRef.current) {
-        popupRef.current = new maplibregl.Popup({ closeButton: false, closeOnClick: false, maxWidth: "320px", offset: 14 });
-      }
-      popupRef.current.setLngLat(lngLat).setHTML(html).addTo(map!);
-    }
-    function hidePopup() {
-      popupRef.current?.remove();
-    }
-
     function onPortEnter(e: maplibregl.MapLayerMouseEvent) {
       map!.getCanvas().style.cursor = "pointer";
       const f = e.features?.[0];
@@ -314,7 +402,7 @@ export function GlobalNetworkMap() {
       const f = e.features?.[0];
       if (!f) return;
       const route = routeByCode.get(f.properties?.route_id);
-      if (route) showPopup(e.lngLat, routePopupHtml(route));
+      if (route) showPopup(e.lngLat, routePopupHtml(route, disruptionByRoute.get(route.route_id)));
     }
     function onRouteLeave() {
       map!.getCanvas().style.cursor = "";
@@ -347,7 +435,48 @@ export function GlobalNetworkMap() {
       map.off("mouseleave", "routes-hit", onRouteLeave);
       map.off("click", "routes-hit", onRouteClick);
     };
-  }, [mapReady, ports, routes, router, setDraft]);
+  }, [mapReady, ports, routes, router, setDraft, disruptionByRoute]);
+
+  // ---- disruption warning markers ------------------------------------------
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+
+    disruptionMarkersRef.current.forEach((m) => m.remove());
+    disruptionMarkersRef.current = [];
+
+    const originByCode = new Map(origins.map((o) => [o.code, o]));
+    const portByCode = new Map(ports.map((p) => [p.code, p]));
+
+    for (const event of disruptionEvents) {
+      const route = routes.find((r) => r.route_id === event.route_id);
+      const o = route && originByCode.get(route.origin_code);
+      const p = route && portByCode.get(route.destination_code);
+      if (!route || !o || !p) continue;
+
+      const arc = buildArc([o.lon, o.lat], [p.lon, p.lat]);
+      const mid = arc[Math.floor(arc.length / 2)];
+      const color = DISRUPTION_COLOR[event.type];
+
+      const el = document.createElement("div");
+      el.style.cssText = `width:22px;height:22px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:12px;background:${color};box-shadow:0 0 0 5px ${color}33;cursor:pointer;`;
+      el.textContent = "⚠";
+      el.addEventListener("mouseenter", () => showPopup(mid as [number, number], routePopupHtml(route, event)));
+      el.addEventListener("mouseleave", hidePopup);
+      el.addEventListener("click", () => {
+        setDraft({ originCode: route.origin_code, destinationCode: route.destination_code, cargoType: route.cargo_type });
+        router.push("/decision");
+      });
+
+      const marker = new maplibregl.Marker({ element: el }).setLngLat(mid as [number, number]).addTo(map);
+      disruptionMarkersRef.current.push(marker);
+    }
+
+    return () => {
+      disruptionMarkersRef.current.forEach((m) => m.remove());
+      disruptionMarkersRef.current = [];
+    };
+  }, [mapReady, disruptionEvents, routes, origins, ports, router, setDraft]);
 
   // popup click delegation ("View Port Intelligence" button inside popup HTML)
   useEffect(() => {
@@ -406,6 +535,8 @@ export function GlobalNetworkMap() {
           <RotateCcw className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      <DisruptionPanel routes={routes} />
 
       {/* filters + layer controls */}
       <MapFilters

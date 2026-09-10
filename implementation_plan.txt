@@ -1,0 +1,255 @@
+# Freight Intelligence UI — Implementation Plan (Mock Simulation Layer + Disruption Simulator)
+
+## Context
+
+The app already exists (Next.js 14 + MapLibre GL + Recharts + Zustand) and already implements
+most of the target UX:
+  - `/decision` (DecisionWorkspaceClient) — freight-details form -> forecast with confidence
+    score, trend, volatility, feasibility, risk, cost, recommendation, what-if scenarios.
+  - `/network` (GlobalNetworkMap) — world map with sea-route arcs, hover popups for ports and
+    routes, layer/filter controls, click-to-prefill-decision-form.
+
+There is NO backend in this repo. Every page calls `lib/api.ts`, which hits
+`NEXT_PUBLIC_API_BASE_URL` (default `localhost:8000/api`) and currently fails outright.
+
+This plan does NOT fork new `/predict` or `/map` pages. It extends the two existing surfaces in
+place, because they already cover the requested UX, and a parallel page would just create two
+inconsistent "prediction" and "map" experiences. It also does not expand the dataset scope (still
+5 overseas origins -> 5 India East-Coast ports, Coal / Iron Ore) — that's a separate product
+decision, not something to sneak in via the mock layer.
+
+Everything below is frontend-only. No backend is written. Every mocked number is explicitly
+labeled `SYNTHETIC` using the app's existing `DataStatusBadge` component so mocked and real data
+are never visually confused — this is an existing design principle in the codebase (see
+`components/ui/Badge.tsx`), not a new convention.
+
+Note on "historic BDI data then loads": read literally as two historic series feeding the
+forecast, not one. The real Baltic Dry Index itself is composed of per-vessel-class sub-indices
+(Capesize/Panamax/Supramax/Handysize) — "loads" most plausibly means that vessel-class rate
+breakdown, which the app already has a slot for (`VesselOptimizerTable`, Section 4) but doesn't
+yet show a historic trend for. Section 1b below adds that.
+
+---
+
+## 1. Mock data + mock API layer
+
+### `src/lib/mockData.ts` (new)
+- Deterministic seeded RNG (`mulberry32` + string hash) so numbers are stable across reloads
+  instead of jumping around randomly on every render.
+- Static reference data matching the CURRENT dataset shape exactly (same types as
+  `types/api.ts`): 5 `Origin`s (AUNTL, IDSMR, MZNAC, RUVVO, USNFK), 5 `Port`s (INPAR, INVTZ,
+  INGAN, INHAL, INENN), 4 `VesselClass`es (Handysize/Supramax/Panamax/Capesize).
+- Generated `Route[]`: one row per (origin x port x cargo-the-origin-supports), with
+  `distance_nm` computed from real lat/lon via the existing `lib/geo.ts` haversine helper,
+  freight rate/trend/volume derived from the seeded RNG so they're plausible and reproducible.
+- `data_status: "SYNTHETIC"` on every record.
+- A `routeId(origin, destination, cargo)` helper used everywhere a route needs to be identified
+  (map, decision workspace, disruption lookups) so all three stay in sync without extra fetches.
+
+### `src/lib/mockApi.ts` (new)
+- One function per method on the real `api` object (`listPorts`, `listOrigins`,
+  `listVesselClasses`, `listRoutes`, `freightRateHistory`, `forecast`, `feasibility`,
+  `runDecision`, `listDecisionRuns`, `getDecisionRun`, `search`, `status`) — same signatures,
+  same return types, so it is a drop-in.
+- `freightRateHistory`: seeded random-walk "historic BDI/rate" series ending at the route's
+  current reference rate — this is the "historic BDI data" input the forecast is built from.
+  Matches the existing real contract exactly: keyed by (origin, cargo) only, NOT destination —
+  the same as the current `ForecastPanel`/`api.forecast` calls already do. This is intentional,
+  not an oversight: the freight index is origin-lane-level; a disruption's route-specific
+  impact (destination-port congestion, a blocked leg, etc.) is layered on top afterwards in
+  Section 3, not baked into this shared origin+cargo series.
+- `forecast`: continues that random walk forward for the requested horizon, with a confidence
+  score that starts high and decays with horizon length, and a band that widens with time —
+  this is the "loads then forecast with confidence score" logic.
+- `runDecision`: composes forecast + feasibility (checked against real port draft/LOA/beam
+  limits and vessel dimensions — deterministic, not random) + risk + cost breakdown +
+  rule-based recommendation (BOOK_NOW / WAIT / BOOK_WITHIN_RANGE / MONITOR) + 4 what-if
+  scenarios, matching `DecisionPipelineResponse` exactly.
+- `listDecisionRuns` / `getDecisionRun`: in-memory array seeded with a few historical runs plus
+  whatever `runDecision` has produced this session, so the "Recent Scenario Runs" table isn't
+  empty on first load.
+- `status()`: returns a `SystemStatus` whose items honestly report "Backend API: not connected /
+  running in client-side simulation mode."
+
+### `src/lib/api.ts` (edit)
+- Wrap each existing method: try the real `fetch` first; if it fails with a network-level
+  `ApiError` (status `0` — backend unreachable), transparently fall back to the matching
+  `mockApi` function and return that instead of throwing.
+- Real backend integration later requires zero changes to any page/component — the moment a
+  real backend responds, it's used; the mock path only ever engages when the backend is down.
+- No new env var, no explicit "demo mode" toggle to remember to flip — it just works standalone
+  today and automatically upgrades once a backend exists.
+
+---
+
+## 1b. Vessel-class "loads" historic rate trend
+
+### `src/lib/mockData.ts` (extend the same file, no new module)
+- Add a seeded historic daily-hire-rate series (26 weeks) per `VesselClass`
+  (Handysize/Supramax/Panamax/Capesize), independent of the origin/cargo forecast — this is the
+  "loads" half of "historic BDI data then loads." Exposed as a plain helper function
+  (`vesselClassRateHistory(vesselCode)`), not added to the `api`/`mockApi` object, since it has
+  no equivalent in the real backend's contract (`types/api.ts` stays untouched, per the
+  no-dataset-expansion rule).
+
+### `src/components/decision/VesselOptimizerTable.tsx` (edit)
+- Add a compact sparkline + 8-week trend arrow next to each vessel class's existing "Estimated
+  daily hire" line, reading from the new helper. Small, additive change to an existing row —
+  no new panel, no new tab, no layout restructuring.
+
+---
+
+## 2. Freight-details form: day / week / month horizon
+
+### `src/components/decision/ShipmentScenarioForm.tsx` (edit)
+- Replace the single "Forecast Horizon (weeks)" number input with a small unit-aware control:
+  a numeric field + a 3-way segmented toggle (Days / Weeks / Months).
+- Local component state only (`horizonValue`, `horizonUnit`); converts to weeks
+  (`days/7`, `months*4.345`, clamped to the existing 4–26 week backend range) and writes the
+  result into the existing `draft.forecastHorizonWeeks` field via `setDraft`.
+- No store/type changes required — `forecastHorizonWeeks` remains the single source of truth
+  consumed by `runDecision`, so this is additive and low-risk.
+- Contract Duration (months) and Shipment Date inputs are unchanged — they already satisfy the
+  "date interval" requirement for the contract side; this change specifically covers the
+  forecast-horizon side ("1 month" style input).
+
+---
+
+## 3. Disruption simulation (weather / geopolitical route-block)
+
+### `src/types/disruption.ts` (new)
+- `DisruptionType = "weather" | "geopolitical" | "congestion"`.
+- `DisruptionPreset`: id, type, label, description, severity (MEDIUM/HIGH), `bdi_impact_pct`,
+  `delay_days`, `reroute` (bool).
+- `DisruptionEvent extends DisruptionPreset`: adds `instance_id`, `route_id`, `activated_at`.
+- 5 preset scenarios covering both categories the user asked for:
+  weather (cyclone warning, Bay of Bengal), geopolitical (Red Sea security reroute, Strait of
+  Hormuz tension, canal draft restriction/reroute), operational (port congestion surge).
+
+### `src/lib/disruptionStore.ts` (new — Zustand)
+- `events: DisruptionEvent[]`.
+- `activate(routeId, preset)` — replaces any existing disruption on that route with the new one
+  (one active disruption per route at a time, keeps the demo legible).
+- `clear(instanceId)`, `clearAll()`.
+- Manual control only, per your earlier answer — no auto-random event spawner.
+
+### `src/lib/disruption.ts` (new — pure helper functions)
+- `getDisruptionForRoute(routeId, events)`.
+- `applyDisruptionToForecast(forecast, disruption)`: ramps the predicted rate upward by
+  `bdi_impact_pct` over the first few weeks, widens the confidence band, recomputes
+  trend/trend_pct/volatility/confidence, and appends a plain-language note to
+  `method_note` — this is the "shows changes in BDI data" requirement.
+- `applyDisruptionToDecision(result, disruption)`: also bumps `risk.overall` / adds a risk
+  factor row; recomputes `cost.freight_cost_usd` from the disrupted forecast's near-term rate
+  (not just the risk line) so the total doesn't look stale next to a visibly higher forecast,
+  adds a separate bump to `risk_penalty_usd` for the disruption itself, and rolls both into
+  `total_expected_cost_usd`; adjusts the recommendation headline/action when severity is HIGH —
+  so the whole Decision Workspace tells one consistent story instead of just the chart changing.
+- `routeId()` (from `mockData.ts`) is a plain deterministic string formatter with no dependency
+  on mock vs. real data — safe to import and use for disruption lookups in
+  `DecisionWorkspaceClient` unconditionally, regardless of which data source answered the
+  current request.
+
+### `src/components/map/DisruptionPanel.tsx` (new)
+- A floating control on the Network map, styled consistently with the existing
+  `MapFilters` panel (same visual language, same corner).
+- Lets you pick: a route (from the routes already loaded on the map), a preset disruption, then
+  "Activate" — and lists currently-active disruptions with a clear (X) button per row and a
+  "Clear All".
+- Small red badge/count on the trigger button when disruptions are active (same pattern
+  `MapFilters` already uses for its own active-filter count).
+
+### `src/components/map/popups.ts` (edit)
+- Add a disruption-aware variant of the route popup: when the hovered route has an active
+  disruption, prepend a colored banner (type icon, label, `+X% BDI impact`, delay) above the
+  existing route stats.
+
+### `src/components/map/GlobalNetworkMap.tsx` (edit)
+- Read `useDisruptionStore` and tag each route feature with `disrupted`, `disruption_type`,
+  `disruption_severity` before building the GeoJSON source.
+- Disrupted routes render with a red/amber dashed overlay line on top of the normal
+  trend/risk/congestion-colored line (existing color modes stay intact underneath).
+- If the active disruption's preset has `reroute: true`, draw a second, more-curved dashed arc
+  as the "alternate path," and dim/dash the original leg to read as blocked — this is the
+  "shows change in route" requirement.
+- A small warning marker (DOM `maplibregl.Marker`, reuses existing lucide icon set) sits at the
+  midpoint of each disrupted route; hovering/clicking it opens the disruption-aware popup.
+- Render `<DisruptionPanel />` alongside the existing `<MapFilters />`.
+
+### `src/components/decision/DecisionWorkspaceClient.tsx` (edit)
+- After a `result` is set, derive the route id from `result.shipment` (origin/destination/cargo)
+  and look up any active disruption for it via the same `disruptionStore` used on the map — so
+  activating a disruption on the map is immediately visible when you analyze that same lane in
+  the Decision Workspace, without re-running the form.
+- If found, run `applyDisruptionToDecision` and pass the adjusted forecast/risk/cost/
+  recommendation into the existing `ForecastPanel` / `RiskPanel` / `CostBreakdownPanel` /
+  `CharterTimingCard` — no changes needed inside those components, they just render whatever
+  they're given.
+- Show a dismissible banner above the Forecast section naming the active disruption, its type,
+  and impact, with a link back to the map's Disruption Panel to manage it.
+- `ScenarioSimulator` (what-if cards) is left at baseline cost for this pass — noted as a known
+  limitation in the banner copy rather than silently inconsistent.
+
+---
+
+## Explicitly out of scope for this pass
+
+- No real ML model, no real historical BDI dataset — mock/seeded only, per your instruction
+  that "the simulations will be added in backend."
+- No new pages/routes (`/predict`, `/map`) — extends `/decision` and `/network` in place.
+- No dataset expansion beyond the current 5 origins / 5 ports / 2 cargoes.
+- No auto-random disruption spawner — manual trigger panel only.
+
+---
+
+## File change summary
+
+New:
+  src/lib/mockData.ts
+  src/lib/mockApi.ts
+  src/types/disruption.ts
+  src/lib/disruptionStore.ts
+  src/lib/disruption.ts
+  src/components/map/DisruptionPanel.tsx
+
+Edited:
+  src/lib/api.ts                                  (auto-fallback to mock on network failure)
+  src/components/decision/ShipmentScenarioForm.tsx (days/weeks/months horizon control)
+  src/components/decision/VesselOptimizerTable.tsx (per-vessel-class "loads" rate sparkline)
+  src/components/decision/DecisionWorkspaceClient.tsx (apply active disruption, show banner)
+  src/components/map/GlobalNetworkMap.tsx          (disrupted-route rendering, reroute arcs,
+                                                     warning markers, DisruptionPanel mount)
+  src/components/map/popups.ts                     (disruption-aware route popup)
+
+Untouched (by design): types/api.ts, lib/store.ts, app/network/page.tsx, app/decision/page.tsx,
+all other decision/ and map/ components, Nav.tsx, ports pages, status page — the existing
+contracts and pages already fit; only the data source underneath them and the disruption/loads
+affordances are added. `DisruptionPanel` mounts inside `GlobalNetworkMap.tsx`'s own render, so
+`network/page.tsx` needs no edit.
+
+Disruption state lives only in the in-memory Zustand store — it resets on a full page reload by
+design (no `localStorage`/persistence needed for a demo affordance); "Clear All" and a reload are
+equivalent.
+
+---
+
+## Verification plan
+
+1. `cd frontend && npm run build` — confirms no type errors across the new mock layer and edits.
+2. `npm run dev`, with NO backend running:
+   - `/network` loads ports/origins/routes from the mock fallback (routes visible, colored,
+     hoverable, `SYNTHETIC` badges wherever data provenance is shown).
+   - `/decision` — running analysis on the demo scenario returns a full pipeline result purely
+     from mock data (forecast chart, confidence %, feasibility, risk, cost, recommendation,
+     what-if cards all populate).
+   - Forecast horizon control: switching Days/Weeks/Months changes the underlying weeks value
+     sent to `runDecision` (spot-check via the resulting forecast's point count/dates).
+3. Disruption flow:
+   - On `/network`, open the Disruption Panel, activate a preset (e.g. "Red Sea Security Alert",
+     `reroute: true`) on a specific route -> route shows dashed/red overlay + alternate arc +
+     warning marker; hover shows the disruption banner in the popup.
+   - Navigate to `/decision`, run/re-open that same origin/destination/cargo -> banner appears,
+     forecast line/band visibly shifts, risk badge and total cost increase, recommendation
+     reflects the disruption.
+   - Clear the disruption from the panel -> both map and decision workspace revert to baseline
+     on next render.
