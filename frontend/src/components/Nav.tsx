@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Anchor, Compass, Gauge, Radar, Search, Ship, Sliders } from "lucide-react";
+import { Anchor, Compass, Radar, Search, Ship, Sliders } from "lucide-react";
 import { api } from "@/lib/api";
 import type { SearchResultItem } from "@/types/api";
 import { useWorkspaceStore } from "@/lib/store";
@@ -14,7 +14,6 @@ const NAV_ITEMS = [
   { href: "/network", label: "Global Network", icon: Compass },
   { href: "/decision", label: "Decision Workspace", icon: Sliders },
   { href: "/ports", label: "Port Intelligence", icon: Anchor },
-  { href: "/status", label: "Data / Model", icon: Gauge },
 ];
 
 export function Nav() {
