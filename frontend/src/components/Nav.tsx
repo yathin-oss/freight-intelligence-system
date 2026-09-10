@@ -4,11 +4,12 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
-import { Anchor, Compass, Radar, Search, Ship, Sliders } from "lucide-react";
+import { Anchor, Compass, Moon, Radar, Search, Ship, Sliders, Sun } from "lucide-react";
 import { api } from "@/lib/api";
 import type { SearchResultItem } from "@/types/api";
 import { useWorkspaceStore } from "@/lib/store";
 import { useCurrencyStore } from "@/lib/currencyStore";
+import { useThemeStore } from "@/lib/themeStore";
 
 const NAV_ITEMS = [
   { href: "/network", label: "Global Network", icon: Compass },
@@ -25,6 +26,7 @@ export function Nav() {
   const boxRef = useRef<HTMLDivElement>(null);
   const setDraft = useWorkspaceStore((s) => s.setDraft);
   const { currency, set: setCurrency } = useCurrencyStore();
+  const { theme, toggle: toggleTheme } = useThemeStore();
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -123,6 +125,14 @@ export function Nav() {
             </div>
           )}
         </div>
+
+        <button
+          onClick={toggleTheme}
+          title="Toggle light/dark theme"
+          className="flex shrink-0 items-center justify-center rounded-lg border border-white/[0.08] p-2 text-base-500 hover:text-base-100"
+        >
+          {theme === "dark" ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
+        </button>
 
         <div className="flex shrink-0 overflow-hidden rounded-lg border border-white/[0.08]" title="Display currency (all figures are computed in USD; this only converts what's shown)">
           {(["USD", "INR"] as const).map((c) => (

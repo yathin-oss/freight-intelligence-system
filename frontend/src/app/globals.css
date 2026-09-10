@@ -2,18 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Light theme (default). Dark overrides are in .dark below. Values are
+   space-separated "R G B" triplets so Tailwind's `rgb(var(--x) / <alpha>)`
+   opacity syntax works for every token. */
 :root {
+  color-scheme: light;
+  --c-base-950: 248 250 252;
+  --c-base-900: 240 243 247;
+  --c-base-850: 245 247 250;
+  --c-base-800: 233 237 242;
+  --c-base-750: 224 229 236;
+  --c-base-700: 214 220 229;
+  --c-base-600: 180 190 204;
+  --c-base-500: 100 112 131;
+  --c-base-100: 15 20 30;
+  --c-white: 15 20 30;
+  --c-black: 255 255 255;
+  --c-ink: 5 7 10;
+}
+
+.dark {
   color-scheme: dark;
+  --c-base-950: 5 7 10;
+  --c-base-900: 10 14 20;
+  --c-base-850: 13 18 26;
+  --c-base-800: 17 24 38;
+  --c-base-750: 21 29 44;
+  --c-base-700: 27 36 54;
+  --c-base-600: 38 49 74;
+  --c-base-500: 58 74 104;
+  --c-base-100: 230 235 242;
+  --c-white: 255 255 255;
+  --c-black: 0 0 0;
+  --c-ink: 5 7 10;
 }
 
 html,
 body {
-  background-color: #05070a;
-  color: #e6ebf2;
+  background-color: rgb(var(--c-base-950));
+  color: rgb(var(--c-base-100));
 }
 
 * {
-  border-color: rgba(255, 255, 255, 0.06);
+  border-color: rgb(var(--c-white) / 0.06);
 }
 
 ::-webkit-scrollbar {
@@ -21,33 +52,33 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0a0e14;
+  background: rgb(var(--c-base-900));
 }
 ::-webkit-scrollbar-thumb {
-  background: #26314a;
+  background: rgb(var(--c-base-600));
   border-radius: 6px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a4a68;
+  background: rgb(var(--c-base-500));
 }
 
 .maplibregl-popup-content {
-  background: #0d121a !important;
-  color: #e6ebf2 !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgb(var(--c-base-850)) !important;
+  color: rgb(var(--c-base-100)) !important;
+  border: 1px solid rgb(var(--c-white) / 0.08) !important;
   border-radius: 10px !important;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35) !important;
   padding: 0 !important;
 }
 .maplibregl-popup-tip {
-  border-top-color: #0d121a !important;
-  border-bottom-color: #0d121a !important;
+  border-top-color: rgb(var(--c-base-850)) !important;
+  border-bottom-color: rgb(var(--c-base-850)) !important;
 }
 .maplibregl-ctrl-attrib {
-  background: rgba(5, 7, 10, 0.65) !important;
+  background: rgb(var(--c-base-950) / 0.65) !important;
 }
 .maplibregl-ctrl-attrib a {
-  color: #7a8aa8 !important;
+  color: rgb(var(--c-base-500)) !important;
 }
 
 @keyframes pulse-ring {

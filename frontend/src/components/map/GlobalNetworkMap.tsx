@@ -6,11 +6,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Locate, Layers as LayersIcon, RotateCcw } from "lucide-react";
 import { api } from "@/lib/api";
-import { LOCAL_FALLBACK_STYLE, resolveInitialMapStyle } from "@/lib/mapStyle";
+import { localFallbackStyle, resolveInitialMapStyle } from "@/lib/mapStyle";
 import { buildArc } from "@/lib/geo";
 import { useWorkspaceStore } from "@/lib/store";
 import { useDisruptionStore } from "@/lib/disruptionStore";
 import { useCurrencyStore } from "@/lib/currencyStore";
+import { useThemeStore } from "@/lib/themeStore";
 import { portPopupHtml, routePopupHtml } from "./popups";
 import type { Origin, Port, Route } from "@/types/api";
 import type { DisruptionEvent, DisruptionType } from "@/types/disruption";
@@ -148,6 +149,7 @@ export function GlobalNetworkMap() {
   const setDraft = useWorkspaceStore((s) => s.setDraft);
   const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
   const { currency } = useCurrencyStore();
+  const { theme } = useThemeStore();
   const disruptionByRoute = new Map(disruptionEvents.map((e) => [e.route_id, e]));
 
   // ---- data fetch ------------------------------------------------------
@@ -181,7 +183,7 @@ export function GlobalNetworkMap() {
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: resolveInitialMapStyle(),
+      style: resolveInitialMapStyle(theme),
       center: VIEWS.world.center,
       zoom: VIEWS.world.zoom,
       attributionControl: false,
@@ -199,7 +201,7 @@ export function GlobalNetworkMap() {
       if (isStyleFailure && !usingFallbackStyle) {
         console.warn("Map style failed to load, falling back to bundled offline basemap.", e.error);
         setUsingFallbackStyle(true);
-        map.setStyle(LOCAL_FALLBACK_STYLE);
+        map.setStyle(localFallbackStyle(theme));
       }
     });
 
@@ -211,6 +213,22 @@ export function GlobalNetworkMap() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---- live theme swap: if the map is showing a local (non-remote) basemap
+  // and the user toggles light/dark, re-apply the matching bundled style.
+  // The existing "styledata" listener below re-adds sources/layers afterward.
+  // skipFirstRef avoids redundantly re-applying the style the map was just
+  // created with, on mount.
+  const skipFirstThemeSwapRef = useRef(true);
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !usingFallbackStyle) return;
+    if (skipFirstThemeSwapRef.current) {
+      skipFirstThemeSwapRef.current = false;
+      return;
+    }
+    map.setStyle(localFallbackStyle(theme));
+  }, [theme, usingFallbackStyle]);
 
   // ---- (re)build data layers whenever data or style changes ----------------
   const buildLayers = useCallback(() => {
@@ -388,7 +406,7 @@ export function GlobalNetworkMap() {
       const f = e.features?.[0];
       if (!f) return;
       const port = portByCode.get(f.properties?.code);
-      if (port) showPopup(e.lngLat, portPopupHtml(port));
+      if (port) showPopup(e.lngLat, portPopupHtml(port, theme));
     }
     function onPortLeave() {
       map!.getCanvas().style.cursor = "";
@@ -404,7 +422,7 @@ export function GlobalNetworkMap() {
       const f = e.features?.[0];
       if (!f) return;
       const route = routeByCode.get(f.properties?.route_id);
-      if (route) showPopup(e.lngLat, routePopupHtml(route, disruptionByRoute.get(route.route_id), currency));
+      if (route) showPopup(e.lngLat, routePopupHtml(route, disruptionByRoute.get(route.route_id), currency, theme));
     }
     function onRouteLeave() {
       map!.getCanvas().style.cursor = "";
@@ -437,7 +455,7 @@ export function GlobalNetworkMap() {
       map.off("mouseleave", "routes-hit", onRouteLeave);
       map.off("click", "routes-hit", onRouteClick);
     };
-  }, [mapReady, ports, routes, router, setDraft, disruptionByRoute, currency]);
+  }, [mapReady, ports, routes, router, setDraft, disruptionByRoute, currency, theme]);
 
   // ---- disruption warning markers ------------------------------------------
   useEffect(() => {
@@ -463,7 +481,7 @@ export function GlobalNetworkMap() {
       const el = document.createElement("div");
       el.style.cssText = `width:22px;height:22px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:12px;background:${color};box-shadow:0 0 0 5px ${color}33;cursor:pointer;`;
       el.textContent = "⚠";
-      el.addEventListener("mouseenter", () => showPopup(mid as [number, number], routePopupHtml(route, event, currency)));
+      el.addEventListener("mouseenter", () => showPopup(mid as [number, number], routePopupHtml(route, event, currency, theme)));
       el.addEventListener("mouseleave", hidePopup);
       el.addEventListener("click", () => {
         setDraft({ originCode: route.origin_code, destinationCode: route.destination_code, cargoType: route.cargo_type });
@@ -478,7 +496,7 @@ export function GlobalNetworkMap() {
       disruptionMarkersRef.current.forEach((m) => m.remove());
       disruptionMarkersRef.current = [];
     };
-  }, [mapReady, disruptionEvents, routes, origins, ports, router, setDraft, currency]);
+  }, [mapReady, disruptionEvents, routes, origins, ports, router, setDraft, currency, theme]);
 
   // popup click delegation ("View Port Intelligence" button inside popup HTML)
   useEffect(() => {

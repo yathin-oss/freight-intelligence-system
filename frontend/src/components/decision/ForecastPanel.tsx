@@ -17,6 +17,7 @@ import { DataStatusBadge, TrendBadge } from "@/components/ui/Badge";
 import { api } from "@/lib/api";
 import { convert, formatRatePerTonne } from "@/lib/currency";
 import { useCurrencyStore } from "@/lib/currencyStore";
+import { useThemeStore } from "@/lib/themeStore";
 import type { ForecastOut } from "@/types/api";
 
 interface ChartRow {
@@ -29,6 +30,11 @@ interface ChartRow {
 export function ForecastPanel({ forecast, originCode, cargoType }: { forecast: ForecastOut; originCode: string; cargoType: string }) {
   const [history, setHistory] = useState<{ date: string; rate_usd_per_tonne: number }[]>([]);
   const { currency } = useCurrencyStore();
+  const { theme } = useThemeStore();
+  const gridStroke = theme === "light" ? "rgba(15,20,30,0.08)" : "rgba(255,255,255,0.06)";
+  const tooltipBg = theme === "light" ? "#f5f7fa" : "#0d121a";
+  const tooltipBorder = theme === "light" ? "rgba(15,20,30,0.12)" : "rgba(255,255,255,0.1)";
+  const refLineStroke = theme === "light" ? "rgba(15,20,30,0.18)" : "rgba(255,255,255,0.15)";
 
   useEffect(() => {
     api
@@ -66,18 +72,18 @@ export function ForecastPanel({ forecast, originCode, cargoType }: { forecast: F
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={data} margin={{ top: 4, right: 12, left: -12, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
             <XAxis dataKey="date" tick={{ fontSize: 10, fill: "#7a8aa8" }} minTickGap={40} />
             <YAxis tick={{ fontSize: 10, fill: "#7a8aa8" }} domain={["auto", "auto"]} unit="" />
             <Tooltip
-              contentStyle={{ background: "#0d121a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
+              contentStyle={{ background: tooltipBg, border: `1px solid ${tooltipBorder}`, borderRadius: 8, fontSize: 12 }}
               labelStyle={{ color: "#7a8aa8" }}
               formatter={(value: any, name: string) => [
                 `${currency === "INR" ? "₹" : "$"}${Number(value).toFixed(2)}/t`,
                 name === "historical" ? "Actual" : "Forecast",
               ]}
             />
-            <ReferenceLine x={forecast.current_rate_date} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
+            <ReferenceLine x={forecast.current_rate_date} stroke={refLineStroke} strokeDasharray="4 4" />
             <Area
               dataKey="band"
               stroke="none"

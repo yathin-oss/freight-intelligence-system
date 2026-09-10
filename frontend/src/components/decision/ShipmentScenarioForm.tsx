@@ -166,7 +166,7 @@ export function ShipmentScenarioForm() {
           <button
             onClick={runAnalysis}
             disabled={isRunning}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-cyan px-4 py-2.5 text-sm font-semibold text-base-950 transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-accent-cyan px-4 py-2.5 text-sm font-semibold text-ink transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isRunning ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
             {isRunning ? "Running Pipeline..." : "Run Analysis"}
@@ -178,11 +178,11 @@ export function ShipmentScenarioForm() {
         .input {
           width: 100%;
           border-radius: 0.5rem;
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          background: rgba(10, 14, 20, 0.8);
+          border: 1px solid rgb(var(--c-white) / 0.08);
+          background: rgb(var(--c-base-900) / 0.8);
           padding: 0.55rem 0.7rem;
           font-size: 13px;
-          color: #e6ebf2;
+          color: rgb(var(--c-base-100));
         }
         .input:focus {
           outline: none;
