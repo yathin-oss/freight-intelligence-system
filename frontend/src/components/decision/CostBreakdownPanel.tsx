@@ -1,6 +1,9 @@
+"use client";
+
 import { Panel } from "@/components/ui/Panel";
 import { DataStatusBadge } from "@/components/ui/Badge";
-import { formatUsd } from "@/lib/format";
+import { formatCurrency } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { CostBreakdown } from "@/types/api";
 
 const ROWS: { key: keyof CostBreakdown; label: string; color: string }[] = [
@@ -12,12 +15,13 @@ const ROWS: { key: keyof CostBreakdown; label: string; color: string }[] = [
 ];
 
 export function CostBreakdownPanel({ cost }: { cost: CostBreakdown }) {
+  const { currency } = useCurrencyStore();
   const max = Math.max(...ROWS.map((r) => cost[r.key] as number), 1);
   return (
     <Panel id="cost-intelligence" title="Total Expected Cost" right={<DataStatusBadge status={cost.data_status} />}>
       <div className="mb-4 flex items-baseline justify-between rounded-lg border border-white/[0.06] bg-base-900/50 px-4 py-3.5">
         <span className="text-[12px] uppercase tracking-wide text-base-500">Total Expected Logistics Cost</span>
-        <span className="text-2xl font-bold text-base-100">{formatUsd(cost.total_expected_cost_usd)}</span>
+        <span className="text-2xl font-bold text-base-100">{formatCurrency(cost.total_expected_cost_usd, currency)}</span>
       </div>
 
       <div className="space-y-2.5">
@@ -28,7 +32,7 @@ export function CostBreakdownPanel({ cost }: { cost: CostBreakdown }) {
             <div key={r.key}>
               <div className="mb-1 flex justify-between text-[11.5px]">
                 <span className="text-base-500">{r.label}</span>
-                <span className="font-medium text-base-100">{formatUsd(value)}</span>
+                <span className="font-medium text-base-100">{formatCurrency(value, currency)}</span>
               </div>
               <div className="h-1.5 w-full overflow-hidden rounded-full bg-base-900">
                 <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: r.color }} />

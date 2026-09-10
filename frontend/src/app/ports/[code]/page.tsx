@@ -7,12 +7,15 @@ import { api } from "@/lib/api";
 import { Panel, StatTile } from "@/components/ui/Panel";
 import { DataStatusBadge, RiskBadge, TrendBadge } from "@/components/ui/Badge";
 import { useWorkspaceStore } from "@/lib/store";
+import { formatRatePerTonne } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { Port, Route } from "@/types/api";
 
 export default function PortDetailPage() {
   const params = useParams<{ code: string }>();
   const router = useRouter();
   const setDraft = useWorkspaceStore((s) => s.setDraft);
+  const { currency } = useCurrencyStore();
   const [port, setPort] = useState<Port | null>(null);
   const [routes, setRoutes] = useState<Route[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +108,7 @@ export default function PortDetailPage() {
                   {r.origin_name}, {r.origin_country} → {port.name}
                 </div>
                 <div className="mt-0.5 text-xs text-base-500">
-                  {r.cargo_type} · {Math.round(r.distance_nm).toLocaleString()} nm · ${r.reference_freight_usd_per_tonne.toFixed(2)}/t
+                  {r.cargo_type} · {Math.round(r.distance_nm).toLocaleString()} nm · {formatRatePerTonne(r.reference_freight_usd_per_tonne, currency)}
                 </div>
               </div>
               <div className="flex items-center gap-3">

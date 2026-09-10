@@ -5,6 +5,11 @@ import { useSearchParams } from "next/navigation";
 import { AlertTriangle, History } from "lucide-react";
 import { useWorkspaceStore } from "@/lib/store";
 import { api } from "@/lib/api";
+import { useDisruptionStore } from "@/lib/disruptionStore";
+import { applyDisruptionToDecision, getDisruptionForRoute } from "@/lib/disruption";
+import { routeId } from "@/lib/simulation";
+import { formatCurrency } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { DecisionRunSummary, Route } from "@/types/api";
 import { SectionNav } from "./SectionNav";
 import { ShipmentScenarioForm } from "./ShipmentScenarioForm";
@@ -15,7 +20,6 @@ import { RiskPanel } from "./RiskPanel";
 import { ScenarioSimulator } from "./ScenarioSimulator";
 import { CostBreakdownPanel } from "./CostBreakdownPanel";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
-import { formatUsd } from "@/lib/format";
 
 export function DecisionWorkspaceClient() {
   const searchParams = useSearchParams();
@@ -44,6 +48,17 @@ export function DecisionWorkspaceClient() {
   useEffect(() => {
     api.listDecisionRuns(8).then(setRecentRuns).catch(() => {});
   }, [result]);
+
+  const { currency } = useCurrencyStore();
+  const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
+  useEffect(() => {
+    initDisruptions();
+  }, [initDisruptions]);
+
+  const activeDisruption = result
+    ? getDisruptionForRoute(routeId(result.shipment.origin_code, result.shipment.destination_code, result.shipment.cargo_type), disruptionEvents)
+    : undefined;
+  const effectiveResult = result && activeDisruption ? applyDisruptionToDecision(result, activeDisruption) : result;
 
   if (!initDone) return null;
 
@@ -84,16 +99,33 @@ export function DecisionWorkspaceClient() {
           </div>
         )}
 
-        {result && (
+        {effectiveResult && (
           <>
-            <ForecastPanel forecast={result.forecast} originCode={result.shipment.origin_code} cargoType={result.shipment.cargo_type} />
-            <CharterTimingCard recommendation={result.recommendation} />
-            <VesselOptimizerTable feasibility={result.feasibility} />
-            <RiskPanel risk={result.risk} />
-            <ScenarioSimulator scenarios={result.what_if} />
+            {activeDisruption && (
+              <div className="flex items-start gap-2 rounded-lg border border-accent-rose/30 bg-accent-rose/10 px-4 py-3 text-sm text-accent-rose">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <div className="font-medium">Active Disruption: {activeDisruption.label}</div>
+                  <div className="mt-0.5 text-xs text-accent-rose/80">
+                    Simulated +{activeDisruption.bdi_impact_pct}% BDI impact, {activeDisruption.delay_days}-day delay
+                    {activeDisruption.reroute ? ", rerouted" : ""}. Forecast, risk and cost below are adjusted for it — manage
+                    disruptions from the Disruption Simulator on the{" "}
+                    <a href="/network" className="underline hover:text-accent-rose">
+                      Global Network map
+                    </a>
+                    . (Scenario Simulator cards below still reflect baseline, undisrupted rates.)
+                  </div>
+                </div>
+              </div>
+            )}
+            <ForecastPanel forecast={effectiveResult.forecast} originCode={effectiveResult.shipment.origin_code} cargoType={effectiveResult.shipment.cargo_type} />
+            <CharterTimingCard recommendation={effectiveResult.recommendation} />
+            <VesselOptimizerTable feasibility={effectiveResult.feasibility} />
+            <RiskPanel risk={effectiveResult.risk} />
+            <ScenarioSimulator scenarios={effectiveResult.what_if} />
             <div className="grid gap-4 lg:grid-cols-2">
-              <CostBreakdownPanel cost={result.cost} />
-              <ExplainabilityPanel recommendation={result.recommendation} />
+              <CostBreakdownPanel cost={effectiveResult.cost} />
+              <ExplainabilityPanel recommendation={effectiveResult.recommendation} />
             </div>
           </>
         )}
@@ -125,7 +157,7 @@ export function DecisionWorkspaceClient() {
                       <td className="py-2 pr-4">{r.quantity_tonnes.toLocaleString()} t</td>
                       <td className="py-2 pr-4">{r.recommended_action}</td>
                       <td className="py-2 pr-4">{r.overall_risk}</td>
-                      <td className="py-2">{formatUsd(r.total_expected_cost_usd)}</td>
+                      <td className="py-2">{formatCurrency(r.total_expected_cost_usd, currency)}</td>
                     </tr>
                   ))}
                 </tbody>

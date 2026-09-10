@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Anchor, ArrowRight } from "lucide-react";
+import { AlertTriangle, Anchor, ArrowRight } from "lucide-react";
 import { api } from "@/lib/api";
 import { Panel } from "@/components/ui/Panel";
 import { DataStatusBadge, RiskBadge } from "@/components/ui/Badge";
@@ -11,11 +11,13 @@ import type { Port } from "@/types/api";
 export default function PortsListPage() {
   const [ports, setPorts] = useState<Port[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     api
       .listPorts()
       .then(setPorts)
+      .catch((e) => setError(e.message || "Failed to load ports."))
       .finally(() => setLoading(false));
   }, []);
 
@@ -28,6 +30,16 @@ export default function PortsListPage() {
       </p>
 
       {loading && <div className="mt-8 text-sm text-base-500">Loading ports...</div>}
+
+      {error && (
+        <div className="mt-6 flex items-start gap-2 rounded-lg border border-accent-rose/30 bg-accent-rose/10 px-4 py-3 text-sm text-accent-rose">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <div className="font-medium">Could not load ports</div>
+            <div className="mt-0.5 text-xs text-accent-rose/80">{error}</div>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {ports.map((p) => (

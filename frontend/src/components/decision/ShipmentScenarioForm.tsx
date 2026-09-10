@@ -9,11 +9,26 @@ import type { Origin, Port } from "@/types/api";
 
 const CARGO_TYPES = ["Coal", "Iron Ore"];
 
+type HorizonUnit = "days" | "weeks" | "months";
+
+function weeksFromHorizon(value: number, unit: HorizonUnit): number {
+  const raw = unit === "days" ? value / 7 : unit === "months" ? value * 4.345 : value;
+  return Math.min(26, Math.max(4, Math.round(raw)));
+}
+
 export function ShipmentScenarioForm() {
   const { draft, setDraft, setResult, isRunning, setIsRunning, setError } = useWorkspaceStore();
   const [origins, setOrigins] = useState<Origin[]>([]);
   const [ports, setPorts] = useState<Port[]>([]);
   const [validCargoes, setValidCargoes] = useState<string[]>(CARGO_TYPES);
+  const [horizonUnit, setHorizonUnit] = useState<HorizonUnit>("weeks");
+  const [horizonValue, setHorizonValue] = useState<number>(draft.forecastHorizonWeeks);
+
+  function updateHorizon(value: number, unit: HorizonUnit) {
+    setHorizonValue(value);
+    setHorizonUnit(unit);
+    setDraft({ forecastHorizonWeeks: weeksFromHorizon(value, unit) });
+  }
 
   useEffect(() => {
     api.listOrigins().then(setOrigins).catch(() => {});
@@ -120,15 +135,31 @@ export function ShipmentScenarioForm() {
           />
         </Field>
 
-        <Field label="Forecast Horizon (weeks)">
-          <input
-            type="number"
-            min={4}
-            max={26}
-            value={draft.forecastHorizonWeeks}
-            onChange={(e) => setDraft({ forecastHorizonWeeks: Number(e.target.value) })}
-            className="input"
-          />
+        <Field label="Forecast Horizon">
+          <div className="flex gap-1.5">
+            <input
+              type="number"
+              min={1}
+              value={horizonValue}
+              onChange={(e) => updateHorizon(Number(e.target.value), horizonUnit)}
+              className="input w-16 shrink-0"
+            />
+            <div className="flex flex-1 overflow-hidden rounded-lg border border-white/[0.08]">
+              {(["days", "weeks", "months"] as const).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => updateHorizon(horizonValue, u)}
+                  className={`flex-1 px-1.5 py-1.5 text-[10.5px] font-medium capitalize transition-colors ${
+                    horizonUnit === u ? "bg-accent-cyan/20 text-accent-cyan" : "bg-base-900/60 text-base-500 hover:text-base-100"
+                  }`}
+                >
+                  {u}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-1 text-[10px] text-base-500/80">= {draft.forecastHorizonWeeks} weeks (4–26 wk range)</div>
         </Field>
 
         <div className="flex items-end">
