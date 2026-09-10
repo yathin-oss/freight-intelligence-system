@@ -1,5 +1,7 @@
 import type { Port, Route } from "@/types/api";
 import type { DisruptionEvent } from "@/types/disruption";
+import { formatRatePerTonne } from "@/lib/currency";
+import type { Currency } from "@/lib/currencyStore";
 
 function val(v: number | null | undefined, suffix = ""): string {
   return v === null || v === undefined ? "DATA UNAVAILABLE" : `${v}${suffix}`;
@@ -50,7 +52,7 @@ function disruptionBannerHtml(disruption: DisruptionEvent): string {
   </div>`;
 }
 
-export function routePopupHtml(route: Route, disruption?: DisruptionEvent): string {
+export function routePopupHtml(route: Route, disruption?: DisruptionEvent, currency: Currency = "USD"): string {
   const riskColor = LEVEL_COLOR[route.risk] || "#7a8aa8";
   const congestionColor = LEVEL_COLOR[route.congestion] || "#7a8aa8";
   const trendColor = route.trend === "decreasing" ? "#3dd68c" : route.trend === "increasing" ? "#e8607a" : "#7a8aa8";
@@ -63,7 +65,7 @@ export function routePopupHtml(route: Route, disruption?: DisruptionEvent): stri
     </div>
     <div style="padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;">
       <div style="color:#7a8aa8;">Distance</div><div style="text-align:right;">${Math.round(route.distance_nm).toLocaleString()} nm</div>
-      <div style="color:#7a8aa8;">Reference Freight</div><div style="text-align:right;">$${route.reference_freight_usd_per_tonne.toFixed(2)}/t</div>
+      <div style="color:#7a8aa8;">Reference Freight</div><div style="text-align:right;">${formatRatePerTonne(route.reference_freight_usd_per_tonne, currency)}</div>
       <div style="color:#7a8aa8;">8-Week Trend</div><div style="text-align:right;color:${trendColor};font-weight:600;">${TREND_ARROW[route.trend] || ""} ${route.trend_pct_8wk.toFixed(1)}%</div>
       <div style="color:#7a8aa8;">Congestion</div><div style="text-align:right;color:${congestionColor};font-weight:600;">${route.congestion}</div>
       <div style="color:#7a8aa8;">Risk</div><div style="text-align:right;color:${riskColor};font-weight:600;">${route.risk}</div>

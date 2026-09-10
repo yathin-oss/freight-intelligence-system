@@ -15,6 +15,8 @@ import {
 import { Panel, StatTile } from "@/components/ui/Panel";
 import { DataStatusBadge, TrendBadge } from "@/components/ui/Badge";
 import { api } from "@/lib/api";
+import { convert, formatRatePerTonne } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { ForecastOut } from "@/types/api";
 
 interface ChartRow {
@@ -25,24 +27,27 @@ interface ChartRow {
 }
 
 export function ForecastPanel({ forecast, originCode, cargoType }: { forecast: ForecastOut; originCode: string; cargoType: string }) {
-  const [history, setHistory] = useState<ChartRow[]>([]);
+  const [history, setHistory] = useState<{ date: string; rate_usd_per_tonne: number }[]>([]);
+  const { currency } = useCurrencyStore();
 
   useEffect(() => {
     api
       .freightRateHistory(originCode, cargoType, 26)
-      .then((rows) => setHistory(rows.map((r) => ({ date: r.date, historical: r.rate_usd_per_tonne }))))
+      .then(setHistory)
       .catch(() => setHistory([]));
   }, [originCode, cargoType]);
 
+  const historyRows: ChartRow[] = history.map((r) => ({ date: r.date, historical: convert(r.rate_usd_per_tonne, currency) }));
   const forecastRows: ChartRow[] = forecast.forecast.map((p) => ({
     date: p.date,
-    forecast: p.predicted_rate,
-    band: [p.lower, p.upper],
+    forecast: convert(p.predicted_rate, currency),
+    band: [convert(p.lower, currency), convert(p.upper, currency)],
   }));
 
   // bridge point so the forecast line connects visually to the last historical point
-  const bridge: ChartRow = { date: forecast.current_rate_date, historical: forecast.current_rate, forecast: forecast.current_rate, band: [forecast.current_rate, forecast.current_rate] };
-  const data = [...history.filter((h) => h.date !== bridge.date), bridge, ...forecastRows];
+  const currentRateConverted = convert(forecast.current_rate, currency);
+  const bridge: ChartRow = { date: forecast.current_rate_date, historical: currentRateConverted, forecast: currentRateConverted, band: [currentRateConverted, currentRateConverted] };
+  const data = [...historyRows.filter((h) => h.date !== bridge.date), bridge, ...forecastRows];
 
   return (
     <Panel
@@ -52,7 +57,7 @@ export function ForecastPanel({ forecast, originCode, cargoType }: { forecast: F
       right={<DataStatusBadge status={forecast.data_status} />}
     >
       <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatTile label="Current / Reference Rate" value={`$${forecast.current_rate.toFixed(2)}/t`} sub={forecast.current_rate_date} />
+        <StatTile label="Current / Reference Rate" value={formatRatePerTonne(forecast.current_rate, currency)} sub={forecast.current_rate_date} />
         <StatTile label="Trend" value={<TrendBadge trend={forecast.trend} />} sub={`${forecast.trend_pct > 0 ? "+" : ""}${forecast.trend_pct.toFixed(1)}% over horizon`} accent="amber" />
         <StatTile label="Confidence" value={`${Math.round(forecast.confidence * 100)}%`} sub={`model: ${forecast.model_version}`} accent="cyan" />
         <StatTile label="Volatility" value={forecast.volatility.toUpperCase()} sub={`${forecast.forecast.length}-week horizon`} accent="rose" />
@@ -67,7 +72,10 @@ export function ForecastPanel({ forecast, originCode, cargoType }: { forecast: F
             <Tooltip
               contentStyle={{ background: "#0d121a", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, fontSize: 12 }}
               labelStyle={{ color: "#7a8aa8" }}
-              formatter={(value: any, name: string) => [`$${Number(value).toFixed(2)}/t`, name === "historical" ? "Actual" : "Forecast"]}
+              formatter={(value: any, name: string) => [
+                `${currency === "INR" ? "₹" : "$"}${Number(value).toFixed(2)}/t`,
+                name === "historical" ? "Actual" : "Forecast",
+              ]}
             />
             <ReferenceLine x={forecast.current_rate_date} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
             <Area

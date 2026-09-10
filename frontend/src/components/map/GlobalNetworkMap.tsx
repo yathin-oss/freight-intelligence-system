@@ -10,6 +10,7 @@ import { LOCAL_FALLBACK_STYLE, resolveInitialMapStyle } from "@/lib/mapStyle";
 import { buildArc } from "@/lib/geo";
 import { useWorkspaceStore } from "@/lib/store";
 import { useDisruptionStore } from "@/lib/disruptionStore";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import { portPopupHtml, routePopupHtml } from "./popups";
 import type { Origin, Port, Route } from "@/types/api";
 import type { DisruptionEvent, DisruptionType } from "@/types/disruption";
@@ -146,6 +147,7 @@ export function GlobalNetworkMap() {
 
   const setDraft = useWorkspaceStore((s) => s.setDraft);
   const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
+  const { currency } = useCurrencyStore();
   const disruptionByRoute = new Map(disruptionEvents.map((e) => [e.route_id, e]));
 
   // ---- data fetch ------------------------------------------------------
@@ -402,7 +404,7 @@ export function GlobalNetworkMap() {
       const f = e.features?.[0];
       if (!f) return;
       const route = routeByCode.get(f.properties?.route_id);
-      if (route) showPopup(e.lngLat, routePopupHtml(route, disruptionByRoute.get(route.route_id)));
+      if (route) showPopup(e.lngLat, routePopupHtml(route, disruptionByRoute.get(route.route_id), currency));
     }
     function onRouteLeave() {
       map!.getCanvas().style.cursor = "";
@@ -435,7 +437,7 @@ export function GlobalNetworkMap() {
       map.off("mouseleave", "routes-hit", onRouteLeave);
       map.off("click", "routes-hit", onRouteClick);
     };
-  }, [mapReady, ports, routes, router, setDraft, disruptionByRoute]);
+  }, [mapReady, ports, routes, router, setDraft, disruptionByRoute, currency]);
 
   // ---- disruption warning markers ------------------------------------------
   useEffect(() => {
@@ -461,7 +463,7 @@ export function GlobalNetworkMap() {
       const el = document.createElement("div");
       el.style.cssText = `width:22px;height:22px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-size:12px;background:${color};box-shadow:0 0 0 5px ${color}33;cursor:pointer;`;
       el.textContent = "⚠";
-      el.addEventListener("mouseenter", () => showPopup(mid as [number, number], routePopupHtml(route, event)));
+      el.addEventListener("mouseenter", () => showPopup(mid as [number, number], routePopupHtml(route, event, currency)));
       el.addEventListener("mouseleave", hidePopup);
       el.addEventListener("click", () => {
         setDraft({ originCode: route.origin_code, destinationCode: route.destination_code, cargoType: route.cargo_type });
@@ -476,7 +478,7 @@ export function GlobalNetworkMap() {
       disruptionMarkersRef.current.forEach((m) => m.remove());
       disruptionMarkersRef.current = [];
     };
-  }, [mapReady, disruptionEvents, routes, origins, ports, router, setDraft]);
+  }, [mapReady, disruptionEvents, routes, origins, ports, router, setDraft, currency]);
 
   // popup click delegation ("View Port Intelligence" button inside popup HTML)
   useEffect(() => {

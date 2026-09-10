@@ -1,11 +1,15 @@
+"use client";
+
 import clsx from "clsx";
 import { Award, Ship, Anchor, Clock } from "lucide-react";
 import { Panel } from "@/components/ui/Panel";
 import { RiskBadge } from "@/components/ui/Badge";
-import { formatUsd } from "@/lib/format";
+import { formatCurrency } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { WhatIfScenario } from "@/types/api";
 
 export function ScenarioSimulator({ scenarios }: { scenarios: WhatIfScenario[] }) {
+  const { currency } = useCurrencyStore();
   return (
     <Panel
       id="scenario-simulator"
@@ -46,7 +50,7 @@ export function ScenarioSimulator({ scenarios }: { scenarios: WhatIfScenario[] }
               {s.feasible ? (
                 <>
                   <div className="text-[10px] uppercase tracking-wide text-base-500">Total Expected Cost</div>
-                  <div className="text-lg font-bold text-base-100">{formatUsd(s.cost.total_expected_cost_usd)}</div>
+                  <div className="text-lg font-bold text-base-100">{formatCurrency(s.cost.total_expected_cost_usd, currency)}</div>
                   <div className="mt-1.5 flex items-center justify-between">
                     <span className="text-[10px] text-base-500">Risk</span>
                     <RiskBadge level={s.risk.overall} />

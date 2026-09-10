@@ -8,6 +8,7 @@ import { Anchor, Compass, Gauge, Radar, Search, Ship, Sliders } from "lucide-rea
 import { api } from "@/lib/api";
 import type { SearchResultItem } from "@/types/api";
 import { useWorkspaceStore } from "@/lib/store";
+import { useCurrencyStore } from "@/lib/currencyStore";
 
 const NAV_ITEMS = [
   { href: "/network", label: "Global Network", icon: Compass },
@@ -24,6 +25,7 @@ export function Nav() {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const setDraft = useWorkspaceStore((s) => s.setDraft);
+  const { currency, set: setCurrency } = useCurrencyStore();
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -121,6 +123,20 @@ export function Nav() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="flex shrink-0 overflow-hidden rounded-lg border border-white/[0.08]" title="Display currency (all figures are computed in USD; this only converts what's shown)">
+          {(["USD", "INR"] as const).map((c) => (
+            <button
+              key={c}
+              onClick={() => setCurrency(c)}
+              className={`px-2.5 py-2 text-[12px] font-semibold transition-colors ${
+                currency === c ? "bg-accent-cyan/20 text-accent-cyan" : "bg-base-900/60 text-base-500 hover:text-base-100"
+              }`}
+            >
+              {c === "USD" ? "$" : "₹"} {c}
+            </button>
+          ))}
         </div>
 
         <button

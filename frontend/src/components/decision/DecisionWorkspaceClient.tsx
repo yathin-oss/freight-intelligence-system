@@ -8,6 +8,8 @@ import { api } from "@/lib/api";
 import { useDisruptionStore } from "@/lib/disruptionStore";
 import { applyDisruptionToDecision, getDisruptionForRoute } from "@/lib/disruption";
 import { routeId } from "@/lib/simulation";
+import { formatCurrency } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { DecisionRunSummary, Route } from "@/types/api";
 import { SectionNav } from "./SectionNav";
 import { ShipmentScenarioForm } from "./ShipmentScenarioForm";
@@ -18,7 +20,6 @@ import { RiskPanel } from "./RiskPanel";
 import { ScenarioSimulator } from "./ScenarioSimulator";
 import { CostBreakdownPanel } from "./CostBreakdownPanel";
 import { ExplainabilityPanel } from "./ExplainabilityPanel";
-import { formatUsd } from "@/lib/format";
 
 export function DecisionWorkspaceClient() {
   const searchParams = useSearchParams();
@@ -48,6 +49,7 @@ export function DecisionWorkspaceClient() {
     api.listDecisionRuns(8).then(setRecentRuns).catch(() => {});
   }, [result]);
 
+  const { currency } = useCurrencyStore();
   const { events: disruptionEvents, init: initDisruptions } = useDisruptionStore();
   useEffect(() => {
     initDisruptions();
@@ -155,7 +157,7 @@ export function DecisionWorkspaceClient() {
                       <td className="py-2 pr-4">{r.quantity_tonnes.toLocaleString()} t</td>
                       <td className="py-2 pr-4">{r.recommended_action}</td>
                       <td className="py-2 pr-4">{r.overall_risk}</td>
-                      <td className="py-2">{formatUsd(r.total_expected_cost_usd)}</td>
+                      <td className="py-2">{formatCurrency(r.total_expected_cost_usd, currency)}</td>
                     </tr>
                   ))}
                 </tbody>

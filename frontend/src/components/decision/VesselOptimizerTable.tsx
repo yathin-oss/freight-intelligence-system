@@ -7,6 +7,8 @@ import { LineChart, Line, ResponsiveContainer } from "recharts";
 import { Panel } from "@/components/ui/Panel";
 import { DataStatusBadge } from "@/components/ui/Badge";
 import { vesselClassRateHistory } from "@/lib/api";
+import { formatCurrency } from "@/lib/currency";
+import { useCurrencyStore } from "@/lib/currencyStore";
 import type { FeasibilityResponse } from "@/types/api";
 
 // Per-vessel-class historic daily-hire trend ("loads") - see
@@ -54,6 +56,7 @@ function LoadsSparkline({ vesselCode }: { vesselCode: string }) {
 }
 
 export function VesselOptimizerTable({ feasibility }: { feasibility: FeasibilityResponse }) {
+  const { currency } = useCurrencyStore();
   return (
     <Panel
       id="vessel-optimizer"
@@ -116,7 +119,7 @@ export function VesselOptimizerTable({ feasibility }: { feasibility: Feasibility
 
               <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[11px] text-base-500">
                 <span>
-                  Estimated daily hire: <span className="text-base-100">${r.estimated_daily_hire_usd.toLocaleString()}</span>
+                  Estimated daily hire: <span className="text-base-100">{formatCurrency(r.estimated_daily_hire_usd, currency)}</span>
                 </span>
                 <LoadsSparkline vesselCode={r.vessel_code} />
               </div>
